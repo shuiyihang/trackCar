@@ -1,0 +1,332 @@
+<?xml version="1.0"?>
+<robot name="track_car">
+
+
+  <!-- Robot Footprint -->
+  <link name="base_footprint"/>
+
+  <!-- 基架 -->
+  <link name="base_link">
+  	<visual>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+          <!-- 长14cm，宽10cm,厚0.25cm-->
+		      <box size="0.14 0.10 0.0025"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+		      <box size="0.14 0.10 0.0025"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.54"/>
+      <inertia ixx="0.0004535" ixy="0" ixz="0" iyy="0.0008762" iyz="0" izz="0.0008323"/>
+    </inertial>
+  </link>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0.0 0.0 0.03" rpy="0 0 0"/>
+  </joint>
+    
+
+  <!-- 配重 -->
+  <link name="battery_link">
+  	<visual>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+          <!-- 长9.3cm，宽6cm,厚2.4cm-->
+		      <box size="0.06 0.093 0.024"/>
+      </geometry>
+      <material name="black">
+        <color rgba="0.0 0.0 0.0 0.5" /> 
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+		      <box size="0.06 0.093 0.024"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- 184g -->
+      <mass value="0.184"/>
+      <inertia ixx="0.0003397" ixy="0" ixz="0" iyy="0.0001926" iyz="0" izz="0.0001888"/>
+    </inertial>
+  </link>
+
+  <joint name="battery_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="battery_link"/>
+    <!-- 向左1cm 向上1.3cm -->
+    <origin xyz="0.01 0.0 0.013" rpy="0 0 0"/>
+  </joint>
+
+  <link name="camera_pole">
+      <inertial>
+          <!-- 20g -->
+          <mass value="0.02"/>
+          <inertia ixx="0.00001671" ixy="0" ixz="0" iyy="0.00001671" iyz="0" izz="0.00000009"/>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+      </inertial>
+      <visual>
+          <geometry>
+              <!-- 直径0.6cm 高10cm-->
+              <cylinder length="0.10" radius="0.003"/>
+          </geometry>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+      </visual>
+      <collision>
+          <geometry>
+              <cylinder length="0.10" radius="0.003"/>
+          </geometry>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+      </collision>
+  </link>
+
+  <joint name="camera_pole_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="camera_pole"/>
+      <!-- 向前移动5cm 中心向上移动5cm -->
+      <origin xyz="0.05 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <!-- 连接摄像头和pole的薄片板 -->
+  <link name="extend_link">
+  	<visual>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+          <!-- 长4.2cm，宽2cm,厚0.2cm-->
+		      <box size="0.020 0.042 0.0020"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0" rpy="0 0 0"/>
+      <geometry>
+		      <box size="0.020 0.042 0.0020"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- 5g -->
+      <mass value="0.005"/>
+      <inertia ixx="0.0000001683" ixy="0" ixz="0" iyy="0.000000741" iyz="0" izz="0.0000070083"/>
+    </inertial>
+  </link>
+
+  <joint name="extend_joint" type="fixed">
+      <parent link="camera_pole"/>
+      <child link="extend_link"/>
+      <!-- 向前移动1cm 中心向上移动5cm -->
+      <origin xyz="0.01 0 0.05" rpy="0 0 0"/>
+  </joint>
+
+  <link name="camera_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+        <!-- (y)长3.5cm 宽2.8cm 厚0.2cm-->
+          <box size="0.002 0.028 0.035"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.002 0.028 0.035"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.005"/>
+          <inertia ixx="0.000000082167" ixy="0" ixz="0" iyy="0.00000041675" iyz="0" izz="0.00000034375"/>
+        </inertial>
+  </link>
+
+  <joint name="camera_joint" type="fixed">
+      <parent link="extend_link" />
+      <child link="camera_link" />
+      <!-- 向前移动3cm 向下80度-->
+      <origin xyz="0.03 0 0" rpy="0 1.396 0"/>
+  </joint>
+
+<!-- 左轮 -->
+  <link name="left_wheel_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+          <!-- 半径2.2cm 长1.8cm -->
+          <cylinder length="0.018" radius="0.022"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+         <cylinder length="0.018" radius="0.022"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.05"/>
+        <inertia ixx="0.000007017" ixy="0" ixz="0" iyy="0.000007017" iyz="0" izz="0.0000121"/>
+      </inertial>
+  </link>
+  
+  <!-- 右轮 -->
+  <link name="right_wheel_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+          <cylinder length="0.018" radius="0.022"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+          <cylinder length="0.018" radius="0.022"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.05"/>
+        <inertia ixx="0.000007017" ixy="0" ixz="0" iyy="0.000007017" iyz="0" izz="0.0000121"/>
+      </inertial>
+  </link>
+    
+  <joint name="left_wheel_joint" type="continuous">
+      <parent link="base_link" />
+      <child link="left_wheel_link" />
+      <!-- 向左(y轴)5+0.4+0.9 cm 向后(x轴) 5cm 向下2.2cm -->
+      <origin xyz="-0.05 -0.063 -0.022" />
+      <axis xyz="0 1 0" />
+  </joint>
+
+  <joint name="right_wheel_joint" type="continuous">
+      <parent link="base_link" />
+      <child link="right_wheel_link" />
+      <origin xyz="-0.05 0.063 -0.022" />
+      <axis xyz="0 1 0" />
+  </joint>
+
+  <link name="caster_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+            <!-- 半径2.1cm -->
+            <sphere radius="0.021"/>
+        </geometry>
+      </visual>
+      <collision>
+        <origin xyz="0 0 0" rpy="1.57079 0 0"/>
+        <geometry>
+            <sphere radius="0.021"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <mass value="0.02"/>
+      <inertia ixx="0.0000003711" ixy="0" ixz="0" iyy="0.0000003711" iyz="0" izz="0.0000003711"/>
+    </inertial>
+  </link>
+    
+  <joint name="caster_joint" type="fixed">
+      <parent link="base_link" />
+      <child link="caster_link" />
+      <!--向前移动5cm 向下2.4cm -->
+      <origin xyz="0.05 0.0 -0.024" />
+      <axis xyz="0 1 1" />
+  </joint>
+
+  <gazebo reference="caster_link">
+    <mu1 value="0.0"/>
+    <mu2 value="0.0"/>
+    <kp value="1000000.0" />
+    <kd value="10.0" />
+    <!-- <fdir1 value="0 0 1"/> -->
+  </gazebo>
+
+
+  <gazebo reference="base_link">
+    <material>Gazebo/Green</material>
+  </gazebo>
+  <gazebo reference="left_wheel_link">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+  <gazebo reference="right_wheel_link">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+  <gazebo reference="caster_link">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+  <gazebo reference="camera_pole">
+    <material>Gazebo/Purple</material>
+  </gazebo>
+  <gazebo reference="extend_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="camera_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+  <gazebo reference="battery_link">
+    <material>Gazebo/Black</material>
+  </gazebo>
+
+
+  <gazebo>
+    <plugin name='diff_drive' filename='libgazebo_ros_diff_drive.so'>
+          <ros>
+            <namespace>/</namespace>
+            <remapping>cmd_vel:=cmd_vel</remapping>
+            <remapping>odom:=odom</remapping>
+          </ros>
+          <update_rate>30</update_rate>
+          <left_joint>left_wheel_joint</left_joint>
+          <right_joint>right_wheel_joint</right_joint>
+          <!-- kinematics -->
+          <!-- 轮距 0.1 + 0.4 + 0.4-->
+          <wheel_separation>0.18</wheel_separation>
+          <!-- 车轮直径 -->
+          <wheel_diameter>0.044</wheel_diameter>
+          <!-- limits -->
+          <!-- 扭矩设为0.05 -->
+          <max_wheel_torque>0.05</max_wheel_torque>
+          <max_wheel_acceleration>0.1</max_wheel_acceleration>
+          <!-- output -->
+          <publish_odom>true</publish_odom>
+          <publish_odom_tf>true</publish_odom_tf>
+          <publish_wheel_tf>false</publish_wheel_tf>
+          <odometry_frame>odom</odometry_frame>
+          <robot_base_frame>base_footprint</robot_base_frame>
+    </plugin> 
+  </gazebo> 
+
+    <gazebo reference="camera_link">
+        <sensor type="camera" name="camera_node">
+            <always_on>true</always_on>
+            <visualize>true</visualize>
+            <update_rate>30.0</update_rate>
+            <camera name="head">
+                <horizontal_fov>0.977</horizontal_fov>
+                <image>
+                    <width>128</width>
+                    <height>1</height>
+                    <format>L8</format>
+                </image>
+                <clip>
+                    <near>0.02</near>
+                    <far>0.3</far>
+                </clip>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.007</stddev>
+                </noise>
+            </camera>
+            <plugin name="gazebo_camera" filename="libgazebo_ros_camera.so">
+              <ros>
+                  <remapping>~/image_raw:=image_raw</remapping>
+                  <remapping>~/camera_info:=camera_info</remapping>
+              </ros>
+              <frame_name>camera_link</frame_name>
+            </plugin>
+        </sensor>
+    </gazebo>
+
+</robot>
