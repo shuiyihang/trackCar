@@ -73,7 +73,8 @@ class TrackCarEnv():
         max_val = int(flat_img.max())
         min_val = int(flat_img.min())
 
-        threshold = math.ceil((max_val + min_val)/2)
+        # 向下取整
+        threshold = math.floor((max_val + min_val)/2)
 
         zones = [8, 32, 56, 80, 104]
         result = np.zeros(5,dtype=int)
@@ -84,7 +85,7 @@ class TrackCarEnv():
                 if flat_img[zones[i] + j] < threshold:
                     black_cnt += 1
 
-            result[5-i-1] = black_cnt
+            result[i] = black_cnt
 
         self.sensor_data = result
 
