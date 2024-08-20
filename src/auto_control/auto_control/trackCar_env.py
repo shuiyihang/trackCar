@@ -118,9 +118,9 @@ class TrackCarEnv():
         done = False
 
         if self.sensor_data[2] > 0:
-            reward = 20
-        elif self.sensor_data[1] > 0 or self.sensor_data[3] > 0:
             reward = 10
+        elif self.sensor_data[1] > 0 or self.sensor_data[3] > 0:
+            reward = 5
         elif self.sensor_data[0] > 0 or self.sensor_data[4] > 0:
             reward = 1
         
@@ -129,8 +129,7 @@ class TrackCarEnv():
             done = True
             reward = -100
         # 对速度和角速度惩罚
-        if self.vel_x < 0:
-            reward -= 50
+
         
         return reward,done
 

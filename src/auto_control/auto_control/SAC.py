@@ -13,14 +13,14 @@ class PolicyNet(nn.Module):
 
         self.shared_net = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
-            F.relu()
+            nn.ReLU()
         )
         self.mu_net = nn.Sequential(
             nn.Linear(hidden_dim, action_dim)
         )
         self.std_net = nn.Sequential(
             nn.Linear(hidden_dim, action_dim),
-            F.softplus()
+            nn.Softplus()
         )
 
     def forward(self, x):
@@ -43,9 +43,9 @@ class QValueNet(nn.Module):
 
         self.net = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
-            F.relu(),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            F.relu(),
+            nn.ReLU(),
             nn.Linear(hidden_dim, 1)
         )
 
@@ -123,10 +123,10 @@ class SAC:
 
     
     def update(self,obs_dict):
-        states = torch.tensor(obs_dict['states'],dtype=torch.float)
-        next_states = torch.tensor(obs_dict['next_states'],dtype=torch.float)
-        actions = torch.tensor(obs_dict['actions'],dtype=torch.float).view(-1,1)
-        rewards = torch.tensor(obs_dict['rewards'],dtype=torch.float).view(-1,1)
+        states = torch.tensor(np.array(obs_dict['states']),dtype=torch.float)
+        next_states = torch.tensor(np.array(obs_dict['next_states']),dtype=torch.float)
+        actions = torch.tensor(np.array(obs_dict['actions']),dtype=torch.float).view(-1,1)
+        rewards = torch.tensor(np.array(obs_dict['rewards']),dtype=torch.float).view(-1,1)
 
         # 更新Q网络
 

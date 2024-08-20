@@ -4,71 +4,104 @@
 from .trackCar_env import TrackCarEnv
 from .reinforce import Reinforce
 from .Actor_Critic import ActorCritic
+from .SAC import SAC
+import collections
+import random
+
 
 import rclpy
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-total_num_episodes = int(1e3)
 rewards_list = []
 best_reward = 0
 
-def train_Model(env:TrackCarEnv,agent:Reinforce):
-    global rewards_list, best_reward, total_num_episodes
+class ReplayBuffer:
+    def __init__(self, capacity):
+        self.buffer = collections.deque(maxlen=capacity) 
+
+    def add(self, state, action, reward, next_state): 
+        self.buffer.append((state, action, reward, next_state)) 
+
+    def sample(self, batch_size): 
+        transitions = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state = zip(*transitions)
+        return np.array(state), action, reward, np.array(next_state) 
+
+    def size(self): 
+        return len(self.buffer)
+
+
+
+def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_size=1000,batch_size=64,num_episodes=500):
+    global rewards_list, best_reward
     print("模型训练开始...")
-    for episode in range(total_num_episodes):
+
+    for episode in range(num_episodes):
         state = env.reset()
         episode_reward = 0
         done = False
         while not done and rclpy.ok():
-        
-            action = agent.sample_action(state)
+            action = agent.take_action(state)
             next_state,reward,done = env.step(action)
 
-            # 记录奖励
-            agent.rewards.append(reward)
-            # 记录状态
-            agent.states.append(state)
-            agent.next_states.append(next_state)
+            replay_buffer.add(state,action,reward,next_state)
 
             episode_reward += reward
             state = next_state
+            if replay_buffer.size() > minimal_size:
+                b_s,b_a,b_r,b_ns = replay_buffer.sample(batch_size)
+                obs_dict = {'states':b_s,'next_states':b_ns,'actions':b_a,'rewards':b_r}
+                agent.update(obs_dict)
         
-        agent.update()
         rewards_list.append(episode_reward)
 
         if episode_reward > best_reward:
             best_reward = episode_reward
-            torch.save(agent.actor_net.state_dict(),'actor_best.pth')
-            torch.save(agent.critic_net.state_dict(),'critic_best.pth')
+            torch.save(agent.actor.state_dict(),'actor_best.pth')
         if episode % 10 == 0:
             print("episode: %d avg reward %.3f" %(episode/10,np.mean(rewards_list[-10:])))
     
     # 保存模型
     print("save module")
-    torch.save(agent.actor_net.state_dict(),'actor_latest.pth')
-    torch.save(agent.critic_net.state_dict(),'critic_latest.pth')
+    torch.save(agent.actor.state_dict(),'actor_latest.pth')
 
 def main(args=None):
     rclpy.init(args=args)
     env = TrackCarEnv()
 
-    # 状态空间3 动作空间2
-    agent = ActorCritic(5,1)
+
+    num_episodes = int(1e3)
+    actor_lr = 3e-4
+    critic_lr = 3e-3
+    alpha_lr = 3e-4
+    hidden_dim = 128
+    gamma = 0.99
+    tau = 0.005  # 软更新参数
+    buffer_size = 100000
+    minimal_size = 1000
+    batch_size = 64
+    target_entropy = -0.1
+    # 角速度限制值 0.5 rad/s
+    action_bound = 0.5
+
+    replay_buffer = ReplayBuffer(buffer_size)
+
+    # 状态空间5 动作空间1
+    agent = SAC(5,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
 
     try:
-        train_Model(env,agent)
+        train_Model(env,agent,replay_buffer,minimal_size,batch_size,num_episodes)
     except:
         print("save module to checkpoint")
-        torch.save(agent.actor_net.state_dict(),'actor_latest.pth')
-        torch.save(agent.critic_net.state_dict(),'critic_latest.pth')
+        torch.save(agent.actor.state_dict(),'actor_latest.pth')
     finally:
         episodes_list = list(range(len(rewards_list)))
         plt.plot(episodes_list, rewards_list)
         plt.xlabel('Episodes')
         plt.ylabel('Returns')
-        plt.title('REINFORCE on {}'.format("ros2_trackCar"))
+        plt.title('SAC on {}'.format("ros2_trackCar"))
         plt.show()
         
         rclpy.shutdown()
