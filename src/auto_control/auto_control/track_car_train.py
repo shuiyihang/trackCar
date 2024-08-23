@@ -21,13 +21,13 @@ class ReplayBuffer:
     def __init__(self, capacity):
         self.buffer = collections.deque(maxlen=capacity) 
 
-    def add(self, state, action, reward, next_state): 
-        self.buffer.append((state, action, reward, next_state)) 
+    def add(self, state, action, reward, next_state, done): 
+        self.buffer.append((state, action, reward, next_state, done)) 
 
     def sample(self, batch_size): 
         transitions = random.sample(self.buffer, batch_size)
-        state, action, reward, next_state = zip(*transitions)
-        return np.array(state), action, reward, np.array(next_state) 
+        state, action, reward, next_state, done = zip(*transitions)
+        return np.array(state), action, reward, np.array(next_state), done 
 
     def size(self): 
         return len(self.buffer)
@@ -36,7 +36,8 @@ class ReplayBuffer:
 
 def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_size=1000,batch_size=64,num_episodes=500):
     global rewards_list, best_reward
-    print("模型训练开始...")
+    print("模型启动...")
+    real_train = False
 
     for episode in range(num_episodes):
         state = env.reset()
@@ -46,13 +47,17 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
             action = agent.take_action(state)
             next_state,reward,done = env.step(action)
 
-            replay_buffer.add(state,action,reward,next_state)
+            replay_buffer.add(state,action,reward,next_state,done)
 
             episode_reward += reward
             state = next_state
             if replay_buffer.size() > minimal_size:
-                b_s,b_a,b_r,b_ns = replay_buffer.sample(batch_size)
-                obs_dict = {'states':b_s,'next_states':b_ns,'actions':b_a,'rewards':b_r}
+                if real_train == False:
+                    real_train = True
+                    print("正式训练开始...")
+                
+                b_s,b_a,b_r,b_ns,b_d = replay_buffer.sample(batch_size)
+                obs_dict = {'states':b_s,'next_states':b_ns,'actions':b_a,'rewards':b_r,'dones':b_d}
                 agent.update(obs_dict)
         
         rewards_list.append(episode_reward)
@@ -72,7 +77,7 @@ def main(args=None):
     env = TrackCarEnv()
 
 
-    num_episodes = int(1e3)
+    num_episodes = int(2e3)
     actor_lr = 3e-4
     critic_lr = 3e-3
     alpha_lr = 3e-4
@@ -80,11 +85,11 @@ def main(args=None):
     gamma = 0.99
     tau = 0.005  # 软更新参数
     buffer_size = 100000
-    minimal_size = 1000
+    minimal_size = 2000
     batch_size = 64
-    target_entropy = -0.1
+    target_entropy = -1
     # 角速度限制值 0.5 rad/s
-    action_bound = 0.5
+    action_bound = 0.1
 
     replay_buffer = ReplayBuffer(buffer_size)
 

@@ -54,6 +54,7 @@ class TrackCarEnv():
 
         self.debug = 0
 
+        self.middle = -1
 
         self.bridge = CvBridge()
 
@@ -69,12 +70,42 @@ class TrackCarEnv():
 
         flat_img = cv_img.flatten()
 
-        # 离散处理下为7块数据
         max_val = int(flat_img.max())
         min_val = int(flat_img.min())
 
         # 向下取整
-        threshold = math.floor((max_val + min_val)/2)
+        threshold = math.floor((max_val + min_val)/2) - 2
+
+
+        pixel_nums = flat_img.size
+        left_edge = -1
+        right_edge = -1
+
+        for i in range(pixel_nums-3):
+            if flat_img[i] > threshold and flat_img[i+1] > threshold and flat_img[i+2] < threshold and flat_img[i+3] < threshold:
+                left_edge = i+1
+                break
+        
+        for i in reversed(range(pixel_nums-3)):
+            if flat_img[i] < threshold and flat_img[i+1] < threshold and flat_img[i+2] > threshold and flat_img[i+3] > threshold:
+                right_edge = i+1
+                break
+        
+        middle = -1
+        
+        if left_edge == -1 and right_edge == -1:
+            # 完全丢线
+            pass
+        elif left_edge == -1:
+            # 左丢线
+            middle = right_edge//2
+        elif right_edge == -1:
+            middle = (left_edge+pixel_nums)//2
+        else:
+            middle = (left_edge+right_edge)//2
+
+        self.middle = middle
+
 
         zones = [8, 32, 56, 80, 104]
         result = np.zeros(5,dtype=int)
@@ -92,9 +123,10 @@ class TrackCarEnv():
         # self.debug += 1
 
         # if self.debug%100 == 0:
-        #     print("flat_img: {}".format(flat_img))
-        #     print("thr: {}".format(threshold))
-        #     print("state: {}".format(format(result),'b'))
+        #     # print("flat_img: {}".format(flat_img))
+        #     print("thr: {},middle:{}".format(threshold,self.middle))
+
+        #     # print("state: {}".format(format(result),'b'))
         #     self.debug = 0
 
 
@@ -114,23 +146,15 @@ class TrackCarEnv():
     # 偏离较多，奖励-10
     # 完全丢线，奖励-100，结束
     def get_reward(self):
-        reward = -1
         done = False
 
-        if self.sensor_data[2] > 0:
-            reward = 10
-        elif self.sensor_data[1] > 0 or self.sensor_data[3] > 0:
-            reward = 5
-        elif self.sensor_data[0] > 0 or self.sensor_data[4] > 0:
-            reward = 1
+        offset = abs(self.middle-64)
         
-
-        if self.sensor_data.max() == 0:
+        reward = 1 - offset/32
+        if self.middle == -1:
             done = True
-            reward = -100
-        # 对速度和角速度惩罚
-
-        
+            reward = -1
+    
         return reward,done
 
     def step(self,action):
@@ -152,6 +176,7 @@ class TrackCarEnv():
         # 返回 state,reward,done
         # state = np.append(self.sensor_data,[self.vel_x,self.ang_z])
         state = np.array(self.sensor_data)
+        # state = np.array([self.middle])
         reward,self.done = self.get_reward()
 
         return state,reward,self.done
@@ -186,6 +211,7 @@ class TrackCarEnv():
         # 返回状态  [[camera raw_data] [x_vel,z_ang]]
         # state = np.append(self.sensor_data,[self.vel_x,self.ang_z])
         state = np.array(self.sensor_data)
+        # state = np.array([self.middle])
         return state
 
 

@@ -97,7 +97,7 @@ class SAC:
         actions = np.array([action.item() for action in actions])
         return actions
     
-    def calc_target(self,rewards,next_states):
+    def calc_target(self,rewards,next_states,dones):
         next_actions,log_prob = self.actor(next_states)
         # 熵H
         entropy = -log_prob
@@ -110,7 +110,7 @@ class SAC:
         next_value = torch.min(q1_value,q2_value) + self.log_alpha.exp() * entropy
 
         # 时序差分结算
-        td_target = rewards + self.gamma * next_value
+        td_target = rewards + self.gamma * next_value * (1 - dones)
         return td_target
     
     # 更新目标网络
@@ -127,11 +127,13 @@ class SAC:
         next_states = torch.tensor(np.array(obs_dict['next_states']),dtype=torch.float)
         actions = torch.tensor(np.array(obs_dict['actions']),dtype=torch.float).view(-1,1)
         rewards = torch.tensor(np.array(obs_dict['rewards']),dtype=torch.float).view(-1,1)
+        dones = torch.tensor(np.array(obs_dict['dones']),dtype=torch.float).view(-1,1)
+
 
         # 更新Q网络
 
         # Q网络的损失函数 网络输出和目标值的均方误差
-        td_target = self.calc_target(rewards,next_states)
+        td_target = self.calc_target(rewards,next_states,dones)
         critic_1_loss = torch.mean(F.mse_loss(self.critic_1(states,actions),td_target.detach()))
         critic_2_loss = torch.mean(F.mse_loss(self.critic_2(states,actions),td_target.detach()))
 
