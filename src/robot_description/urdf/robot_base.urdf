@@ -194,7 +194,7 @@
   <joint name="left_wheel_joint" type="continuous">
       <parent link="base_link" />
       <child link="left_wheel_link" />
-      <!-- 向左(y轴)5+0.4+0.9 cm 向后(x轴) 5cm 向下2.2cm -->
+      <!-- 向左(y轴)5+0.4(自定义间隙)+0.9(半径) cm 向后(x轴) 5cm 向下2.2cm -->
       <origin xyz="-0.05 -0.063 -0.022" />
       <axis xyz="0 1 0" />
   </joint>
@@ -280,14 +280,14 @@
           <left_joint>left_wheel_joint</left_joint>
           <right_joint>right_wheel_joint</right_joint>
           <!-- kinematics -->
-          <!-- 轮距 0.1 + 0.4 + 0.4-->
-          <wheel_separation>0.18</wheel_separation>
+          <!-- 轮距 -->
+          <wheel_separation>0.126</wheel_separation>
           <!-- 车轮直径 -->
           <wheel_diameter>0.044</wheel_diameter>
           <!-- limits -->
           <!-- 扭矩设为0.05 -->
-          <max_wheel_torque>0.05</max_wheel_torque>
-          <max_wheel_acceleration>0.1</max_wheel_acceleration>
+          <max_wheel_torque>20</max_wheel_torque>
+          <max_wheel_acceleration>1.0</max_wheel_acceleration>
           <!-- output -->
           <publish_odom>true</publish_odom>
           <publish_odom_tf>true</publish_odom_tf>

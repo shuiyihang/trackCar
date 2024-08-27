@@ -5,6 +5,7 @@ from .SAC import SAC
 
 import rclpy
 import numpy as np
+from time import sleep
 
 import torch
 
@@ -12,21 +13,21 @@ def rl_net_test(env):
     actor_lr = 3e-4
     critic_lr = 3e-3
     alpha_lr = 3e-4
-    hidden_dim = 128
+    hidden_dim = 64
     gamma = 0.99
     tau = 0.005  # 软更新参数
     target_entropy = -0.1
     # 角速度限制值 1 rad/s
-    action_bound = 1
+    action_bound = 0.5
 
     # 状态空间5 动作空间1
-    agent = SAC(5,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
+    agent = SAC(3,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
 
-    agent.actor.load_state_dict(torch.load("actor_best.pth",weights_only=True))
+    agent.actor.load_state_dict(torch.load("actor_latest.pth",weights_only=True))
 
     state = env.reset()
     done = False
-
+    print("开始测试...")
     while rclpy.ok():
         action = agent.take_action(state)
         state,reward,done = env.step(action)

@@ -14,6 +14,9 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
+
+import logging
+
 rewards_list = []
 best_reward = 0
 
@@ -39,6 +42,18 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
     print("模型启动...")
     real_train = False
 
+    # 配置日志
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        filename='app.log',
+        filemode='w'
+    )
+
+    logger = logging.getLogger('train_log')
+
+
     for episode in range(num_episodes):
         state = env.reset()
         episode_reward = 0
@@ -60,6 +75,7 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
                 obs_dict = {'states':b_s,'next_states':b_ns,'actions':b_a,'rewards':b_r,'dones':b_d}
                 agent.update(obs_dict)
         
+        logger.info("============last total reward: {}==========\n\n".format(episode_reward))
         rewards_list.append(episode_reward)
 
         if episode_reward > best_reward:
@@ -75,26 +91,24 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
 def main(args=None):
     rclpy.init(args=args)
     env = TrackCarEnv()
-
-
-    num_episodes = int(2e3)
+    num_episodes = int(1e3)
     actor_lr = 3e-4
     critic_lr = 3e-3
     alpha_lr = 3e-4
-    hidden_dim = 128
+    hidden_dim = 64
     gamma = 0.99
     tau = 0.005  # 软更新参数
     buffer_size = 100000
     minimal_size = 2000
     batch_size = 64
-    target_entropy = -1
+    target_entropy = -2
     # 角速度限制值 0.5 rad/s
-    action_bound = 0.1
+    action_bound = 0.5
 
     replay_buffer = ReplayBuffer(buffer_size)
 
     # 状态空间5 动作空间1
-    agent = SAC(5,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
+    agent = SAC(3,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
 
     try:
         train_Model(env,agent,replay_buffer,minimal_size,batch_size,num_episodes)

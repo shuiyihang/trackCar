@@ -20,6 +20,10 @@ from time import sleep
 
 import math
 
+import logging
+
+import time
+
 TIME_DELTA = 0.1
 
 
@@ -52,11 +56,28 @@ class TrackCarEnv():
 
         self.done = False
 
-        self.debug = 0
-
         self.middle = -1
 
+        # 轮距
+        self.Wheel_L = 0.126
+
+        self.v_left = 0
+        self.v_right = 0
+
         self.bridge = CvBridge()
+
+        self.step_nums = 0
+
+        # 配置日志
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            filename='app.log',
+            filemode='w'
+        )
+
+        self.logger = logging.getLogger('my_logger')
 
     
         self.t = Thread(target=self.executor.spin)
@@ -66,6 +87,7 @@ class TrackCarEnv():
         self.t.join()
 
     def camera_data_callback(self,msg):
+
         cv_img = self.bridge.imgmsg_to_cv2(msg,'mono8')
 
         flat_img = cv_img.flatten()
@@ -74,7 +96,7 @@ class TrackCarEnv():
         min_val = int(flat_img.min())
 
         # 向下取整
-        threshold = math.floor((max_val + min_val)/2) - 2
+        threshold = 100 # math.floor((max_val + min_val)/2)
 
 
         pixel_nums = flat_img.size
@@ -82,12 +104,12 @@ class TrackCarEnv():
         right_edge = -1
 
         for i in range(pixel_nums-3):
-            if flat_img[i] > threshold and flat_img[i+1] > threshold and flat_img[i+2] < threshold and flat_img[i+3] < threshold:
+            if flat_img[i] > threshold and flat_img[i+1] > threshold and flat_img[i+2] <= threshold and flat_img[i+3] <= threshold:
                 left_edge = i+1
                 break
         
         for i in reversed(range(pixel_nums-3)):
-            if flat_img[i] < threshold and flat_img[i+1] < threshold and flat_img[i+2] > threshold and flat_img[i+3] > threshold:
+            if flat_img[i] <= threshold and flat_img[i+1] <= threshold and flat_img[i+2] > threshold and flat_img[i+3] > threshold:
                 right_edge = i+1
                 break
         
@@ -107,33 +129,42 @@ class TrackCarEnv():
         self.middle = middle
 
 
-        zones = [8, 32, 56, 80, 104]
-        result = np.zeros(5,dtype=int)
+        # zones = [8, 32, 56, 80, 104]
+        # result = np.zeros(5,dtype=int)
 
-        for i in range(len(zones)):
-            black_cnt = 0
-            for j in range(16):
-                if flat_img[zones[i] + j] < threshold:
-                    black_cnt += 1
+        # for i in range(len(zones)):
+        #     black_cnt = 0
+        #     for j in range(16):
+        #         if flat_img[zones[i] + j] < threshold:
+        #             black_cnt += 1
 
-            result[i] = black_cnt
+        #     result[i] = black_cnt
 
-        self.sensor_data = result
+        # self.sensor_data = result
 
-        # self.debug += 1
 
-        # if self.debug%100 == 0:
-        #     # print("flat_img: {}".format(flat_img))
-        #     print("thr: {},middle:{}".format(threshold,self.middle))
 
-        #     # print("state: {}".format(format(result),'b'))
-        #     self.debug = 0
+
+
+        # self.logger.info("flat_img:\n")
+        # self.logger.info("{}\n".format(flat_img))
+        # self.logger.info("middle:\n")
+        # self.logger.info("{}\n".format(self.middle))
+        # self.logger.info("sensor data:\n")
+        # self.logger.info("{}\n\n".format(self.sensor_data))
 
 
 
     def speed_data_callback(self,msg):
+        
         self.vel_x = msg.twist.twist.linear.x
         self.ang_z = msg.twist.twist.angular.z
+
+        # 计算左右轮速度
+        self.v_left = self.vel_x - (self.Wheel_L/2)*self.ang_z
+        self.v_right = self.vel_x + (self.Wheel_L/2)*self.ang_z
+
+        # self.logger.info("vel_x: {} ang_z: {}".format(self.vel_x,self.ang_z))
 
     def stop_action(self):
         vel_cmd = Twist()
@@ -175,14 +206,32 @@ class TrackCarEnv():
 
         # 返回 state,reward,done
         # state = np.append(self.sensor_data,[self.vel_x,self.ang_z])
-        state = np.array(self.sensor_data)
-        # state = np.array([self.middle])
+
+        # state = np.array(self.sensor_data)
+
+        # self.logger.info("tar_z:{} vel_x:{} ang_z:{} | middle:{} v_left:{} v_right:{}".format(action[0],self.vel_x,self.ang_z,self.middle,self.v_left,self.v_right))
+        self.logger.info("tar_z:{} | ang_z:{} | middle:{}".format(action[0],self.ang_z,self.middle))
+
+        state = np.array([self.middle,self.v_left,self.v_right])
+
         reward,self.done = self.get_reward()
+
+        # (-1,1)->(0,1)
+        reward = (reward + 1)/2
+
+        self.step_nums += 1
+
+        # 达到1000时间步，终止
+        if self.step_nums > 1000:
+            self.done = True
+            self.step_nums = 0
+
 
         return state,reward,self.done
         
 
     def reset(self):
+        self.step_nums = 0
         self.stop_action()
         while not self.reset_world.wait_for_service(timeout_sec=1.0):
             print("reset world service is not available...")
@@ -210,13 +259,13 @@ class TrackCarEnv():
 
         # 返回状态  [[camera raw_data] [x_vel,z_ang]]
         # state = np.append(self.sensor_data,[self.vel_x,self.ang_z])
-        state = np.array(self.sensor_data)
-        # state = np.array([self.middle])
+        # state = np.array(self.sensor_data)
+        state = np.array([self.middle,self.v_left,self.v_right])
         return state
 
 
 
 # ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{'linear': {'x': 0.1, 'y': 0.0, 'z': 0.0}, 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}}"
 # ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{'linear': {'x': 0, 'y': 0.0, 'z': 0.0}, 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.0}}"
-# ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{'linear': {'x': 0, 'y': 0.0, 'z': 0.0}, 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.1}}"
+# ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{'linear': {'x': 0.0, 'y': 0.0, 'z': 0.0}, 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.9}}"
 # ros2 topic pub /cmd_vel geometry_msgs/msg/Twist "{'linear': {'x': 0.1, 'y': 0.0, 'z': 0.0}, 'angular': {'x': 0.0, 'y': 0.0, 'z': 0.1}}"

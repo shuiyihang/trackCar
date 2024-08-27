@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.distributions.normal import Normal
 import numpy as np
 import torch.nn.functional as F
+import logging
 
 class PolicyNet(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, action_bound):
@@ -19,14 +20,29 @@ class PolicyNet(nn.Module):
             nn.Linear(hidden_dim, action_dim)
         )
         self.std_net = nn.Sequential(
-            nn.Linear(hidden_dim, action_dim),
-            nn.Softplus()
+            nn.Linear(hidden_dim, action_dim)
         )
+        self.LOG_STD_MAX = 2
+        self.LOG_STD_MIN = -20
+
+        # 配置日志
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            filename='policy.log',
+            filemode='w'
+        )
+        self.logger = logging.getLogger('policy_logger')
 
     def forward(self, x):
         shared_features = self.shared_net(x)
         mu = self.mu_net(shared_features)
-        std = self.std_net(shared_features)
+        log_std = self.std_net(shared_features)
+
+        log_std = torch.clamp(log_std,self.LOG_STD_MIN,self.LOG_STD_MAX)
+        std = torch.exp(log_std)
+
         #
         dist = Normal(mu, std)
         normal_sample = dist.rsample()  # rsample()是重参数化采样
@@ -35,6 +51,9 @@ class PolicyNet(nn.Module):
         # 计算tanh_normal分布的对数概率密度
         log_prob = log_prob - torch.log(1 - torch.tanh(action).pow(2) + 1e-7)
         action = action * self.action_bound
+
+        # self.logger.info("mu: {} std: {} middle:{} action: {}\n".format(mu[0].item(),std[0].item(),x[0].item(),action[0].item()))
+
         return action, log_prob
     
 class QValueNet(nn.Module):
@@ -76,8 +95,8 @@ class SAC:
         self.tar_critic_2.load_state_dict(self.critic_2.state_dict())
 
         # 优化器
-        self.critic_1_optimizer = torch.optim.Adam(self.tar_critic_1.parameters(),lr=critic_lr)
-        self.critic_2_optimizer = torch.optim.Adam(self.tar_critic_2.parameters(),lr=critic_lr)
+        self.critic_1_optimizer = torch.optim.Adam(self.critic_1.parameters(),lr=critic_lr)
+        self.critic_2_optimizer = torch.optim.Adam(self.critic_2.parameters(),lr=critic_lr)
 
         # alpha是熵正则项的系数，控制熵的重要程度
         alpha = 0.01
@@ -89,12 +108,25 @@ class SAC:
         self.target_entropy = target_entropy
         self.tau = tau
         self.gamma = gamma
+
+        # 配置日志
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            datefmt='%Y-%m-%d %H:%M:%S',
+            filename='sac.log',
+            filemode='w'
+        )
+        self.logger = logging.getLogger('sac_logger')
     
     def take_action(self,state):
         state = torch.tensor(np.array(state),dtype=torch.float32)
         actions = self.actor(state)[0]
 
         actions = np.array([action.item() for action in actions])
+        
+        # self.logger.info("state: {} action: {}\n".format(state.item(),actions[0]))
+
         return actions
     
     def calc_target(self,rewards,next_states,dones):
