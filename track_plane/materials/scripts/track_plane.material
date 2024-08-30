@@ -1,0 +1,31 @@
+material TrackCar/Diffuse
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture track_env.png
+        filtering anistropic
+        max_anisotropy 8
+      }
+    }
+  }
+}
+
+material TrackCar/Diffuse_v2
+{
+  technique
+  {
+    pass
+    {
+      texture_unit
+      {
+        texture track_env_v2.png
+        filtering anistropic
+        max_anisotropy 8
+      }
+    }
+  }
+}

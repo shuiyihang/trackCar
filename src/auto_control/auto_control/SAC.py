@@ -75,21 +75,21 @@ class QValueNet(nn.Module):
 class SAC:
     def __init__(self,state_dim, hidden_dim, action_dim,action_bound,
                  actor_lr,critic_lr,alpha_lr,
-                 target_entropy,tau,gamma):
+                 target_entropy,tau,gamma,device):
         # target_entropy:目标熵
         # tau:软更新参数
         # gamma 下一步奖励的折扣
 
         # 一个策略，两个评论家
-        self.actor = PolicyNet(state_dim,hidden_dim,action_dim,action_bound)
+        self.actor = PolicyNet(state_dim,hidden_dim,action_dim,action_bound).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),lr=actor_lr)
         # Q网络
-        self.critic_1 = QValueNet(state_dim,hidden_dim,action_dim)
-        self.critic_2 = QValueNet(state_dim,hidden_dim,action_dim)
+        self.critic_1 = QValueNet(state_dim,hidden_dim,action_dim).to(device)
+        self.critic_2 = QValueNet(state_dim,hidden_dim,action_dim).to(device)
 
         # 目标Q网络
-        self.tar_critic_1 = QValueNet(state_dim,hidden_dim,action_dim)
-        self.tar_critic_2 = QValueNet(state_dim,hidden_dim,action_dim)
+        self.tar_critic_1 = QValueNet(state_dim,hidden_dim,action_dim).to(device)
+        self.tar_critic_2 = QValueNet(state_dim,hidden_dim,action_dim).to(device)
 
         self.tar_critic_1.load_state_dict(self.critic_1.state_dict())
         self.tar_critic_2.load_state_dict(self.critic_2.state_dict())
@@ -108,6 +108,8 @@ class SAC:
         self.target_entropy = target_entropy
         self.tau = tau
         self.gamma = gamma
+        
+        self.device = device
 
         # 配置日志
         logging.basicConfig(
@@ -120,7 +122,7 @@ class SAC:
         self.logger = logging.getLogger('sac_logger')
     
     def take_action(self,state):
-        state = torch.tensor(np.array(state),dtype=torch.float32)
+        state = torch.tensor(np.array(state),dtype=torch.float32).to(self.device)
         actions = self.actor(state)[0]
 
         actions = np.array([action.item() for action in actions])
@@ -155,11 +157,11 @@ class SAC:
 
     
     def update(self,obs_dict):
-        states = torch.tensor(np.array(obs_dict['states']),dtype=torch.float)
-        next_states = torch.tensor(np.array(obs_dict['next_states']),dtype=torch.float)
-        actions = torch.tensor(np.array(obs_dict['actions']),dtype=torch.float).view(-1,1)
-        rewards = torch.tensor(np.array(obs_dict['rewards']),dtype=torch.float).view(-1,1)
-        dones = torch.tensor(np.array(obs_dict['dones']),dtype=torch.float).view(-1,1)
+        states = torch.tensor(np.array(obs_dict['states']),dtype=torch.float).to(self.device)
+        next_states = torch.tensor(np.array(obs_dict['next_states']),dtype=torch.float).to(self.device)
+        actions = torch.tensor(np.array(obs_dict['actions']),dtype=torch.float).view(-1,1).to(self.device)
+        rewards = torch.tensor(np.array(obs_dict['rewards']),dtype=torch.float).view(-1,1).to(self.device)
+        dones = torch.tensor(np.array(obs_dict['dones']),dtype=torch.float).view(-1,1).to(self.device)
 
 
         # 更新Q网络

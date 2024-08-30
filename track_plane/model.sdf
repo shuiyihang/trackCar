@@ -1,0 +1,43 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="track_plane">
+    <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>2.6 2.6</size>
+          </plane>
+        </geometry>
+        <surface>
+          <contact>
+             <collide_bitmask>0xffff</collide_bitmask>
+          </contact>
+          <friction>
+            <ode>
+              <mu>100</mu>
+              <mu2>50</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+      <visual name="visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>2.6 2.6</size>
+          </plane>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://track_plane/materials/scripts</uri>
+            <uri>model://track_plane/materials/textures</uri>
+            <name>TrackCar/Diffuse_v2</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

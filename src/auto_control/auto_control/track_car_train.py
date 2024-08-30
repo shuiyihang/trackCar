@@ -13,6 +13,7 @@ import rclpy
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+import time
 
 
 import logging
@@ -41,6 +42,9 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
     global rewards_list, best_reward
     print("模型启动...")
     real_train = False
+
+    prefix_best = 'checkpoint/' + 'actor_best'
+    prefix_latest = 'checkpoint/' + 'actor_latest'
 
     # 配置日志
     logging.basicConfig(
@@ -80,13 +84,13 @@ def train_Model(env:TrackCarEnv,agent:SAC,replay_buffer:ReplayBuffer,minimal_siz
 
         if episode_reward > best_reward:
             best_reward = episode_reward
-            torch.save(agent.actor.state_dict(),'actor_best.pth')
+            torch.save(agent.actor.state_dict(),prefix_best + '.pth')
         if episode % 10 == 0:
             print("episode: %d avg reward %.3f" %(episode/10,np.mean(rewards_list[-10:])))
     
     # 保存模型
     print("save module")
-    torch.save(agent.actor.state_dict(),'actor_latest.pth')
+    torch.save(agent.actor.state_dict(),time.strftime(prefix_latest + '_%m_%d_%H:%M.pth'))
 
 def main(args=None):
     rclpy.init(args=args)
@@ -100,21 +104,23 @@ def main(args=None):
     tau = 0.005  # 软更新参数
     buffer_size = 100000
     minimal_size = 2000
-    batch_size = 64
+    batch_size = 128
     target_entropy = -2
     # 角速度限制值 0.5 rad/s
     action_bound = 0.5
+    prefix_latest = 'checkpoint/' + 'actor_latest'
 
     replay_buffer = ReplayBuffer(buffer_size)
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
     # 状态空间5 动作空间1
-    agent = SAC(3,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma)
+    agent = SAC(3,hidden_dim,1,action_bound,actor_lr,critic_lr,alpha_lr,target_entropy,tau,gamma,device)
 
     try:
         train_Model(env,agent,replay_buffer,minimal_size,batch_size,num_episodes)
     except:
         print("save module to checkpoint")
-        torch.save(agent.actor.state_dict(),'actor_latest.pth')
+        torch.save(agent.actor.state_dict(),time.strftime(prefix_latest + '_%m_%d_%H:%M.pth'))
     finally:
         episodes_list = list(range(len(rewards_list)))
         plt.plot(episodes_list, rewards_list)
